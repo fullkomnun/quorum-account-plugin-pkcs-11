@@ -1,0 +1,45 @@
+package server
+
+import (
+	"context"
+	"encoding/json"
+	"log"
+	"quorum-account-plugin-pkcs-11/internal/config"
+	"quorum-account-plugin-pkcs-11/internal/pkcs11"
+	"time"
+
+	"github.com/jpmorganchase/quorum-account-plugin-sdk-go/proto_common"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+func (p *HashicorpPlugin) Init(_ context.Context, req *proto_common.PluginInitialization_Request) (*proto_common.PluginInitialization_Response, error) {
+	startTime := time.Now()
+	defer func() {
+		log.Println("[INFO] plugin initialization took", time.Now().Sub(startTime).Round(time.Microsecond))
+	}()
+
+	conf := new(config.Config)
+
+	if err := json.Unmarshal(req.GetRawConfiguration(), conf); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "unable to unmarshal account plugin config: if provided as a file, ensure file:// scheme is included in path:  err = %v", err.Error())
+	}
+
+	if err := conf.Validate(); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	pkcs11Wrapper, err := pkcs11.NewCryptoki(conf.Library)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	am, err := pkcs11.NewAccountManager(pkcs11Wrapper, *conf)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	p.acctManager = am
+
+	return &proto_common.PluginInitialization_Response{}, nil
+}

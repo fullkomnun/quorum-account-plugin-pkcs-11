@@ -24,7 +24,7 @@ var (
 
 func main() {
 	meta := make(map[string]interface{})
-	meta["name"] = "quorum-account-plugin-pkcs#11"
+	meta["name"] = "quorum-account-plugin-pkcs-11"
 	meta["version"] = Version
 	meta["os"] = runtime.GOOS
 	meta["arch"] = runtime.GOARCH
